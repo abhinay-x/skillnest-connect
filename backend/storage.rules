@@ -1,0 +1,115 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+    
+    function isAdmin() {
+      return isAuthenticated() && 
+        firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+    
+    function isImage() {
+      return request.resource.contentType.matches('image/.*');
+    }
+    
+    function isPdf() {
+      return request.resource.contentType == 'application/pdf';
+    }
+    
+    function isVideo() {
+      return request.resource.contentType.matches('video/.*');
+    }
+    
+    function isValidSize() {
+      return request.resource.size <= 5 * 1024 * 1024; // 5MB limit
+    }
+    
+    // User profile images
+    match /users/{userId}/profile/{imageName} {
+      allow read: if true;
+      allow write: if isOwner(userId) && 
+                    (isImage() || isPdf()) && 
+                    isValidSize();
+    }
+    
+    // Service images
+    match /services/{serviceId}/{imageName} {
+      allow read: if true;
+      allow write: if isAuthenticated() && 
+                    (isImage() || isPdf()) && 
+                    isValidSize();
+    }
+    
+    // Worker portfolio images
+    match /workers/{workerId}/portfolio/{imageName} {
+      allow read: if true;
+      allow write: if isOwner(workerId) && 
+                    isImage() && 
+                    isValidSize();
+    }
+    
+    // Chat attachments
+    match /chats/{chatId}/attachments/{fileName} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated() && 
+                    (isImage() || isPdf() || isVideo()) && 
+                    isValidSize();
+    }
+    
+    // Booking documents
+    match /bookings/{bookingId}/documents/{fileName} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated() && 
+                    (isImage() || isPdf()) && 
+                    isValidSize();
+    }
+    
+    // Tool images
+    match /tools/{toolId}/{imageName} {
+      allow read: if true;
+      allow write: if isAuthenticated() && 
+                    (isImage() || isPdf()) && 
+                    isValidSize();
+    }
+    
+    // Product images
+    match /products/{productId}/{imageName} {
+      allow read: if true;
+      allow write: if isAuthenticated() && 
+                    (isImage() || isPdf()) && 
+                    isValidSize();
+    }
+    
+    // Temporary uploads
+    match /temp/{userId}/{fileName} {
+      allow read: if isOwner(userId);
+      allow write: if isOwner(userId) && 
+                    (isImage() || isPdf() || isVideo()) && 
+                    isValidSize();
+    }
+    
+    // General uploads
+    match /uploads/{userId}/{fileName} {
+      allow read: if true;
+      allow write: if isOwner(userId) && 
+                    (isImage() || isPdf() || isVideo()) && 
+                    isValidSize();
+    }
+    
+    // Admin uploads
+    match /admin/{fileName} {
+      allow read: if true;
+      allow write: if isAdmin() && 
+                    (isImage() || isPdf()) && 
+                    isValidSize();
+    }
+  }
+}
