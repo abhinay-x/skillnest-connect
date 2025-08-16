@@ -16,7 +16,7 @@ const Header = ({ cartCount = 0, bookingCount = 0 }) => {
     { label: 'Marketplace', path: '/marketplace', icon: 'ShoppingBag' },
     { label: 'Rentals', path: '/tool-rental', icon: 'Wrench' },
     { label: 'Book', path: '/booking', icon: 'Calendar' },
-    { label: 'Profiles', path: '/worker/profile', icon: 'Users' }
+    { label: 'Profiles', path: '/profiles', icon: 'Users' }
   ];
 
   const isActivePath = (path) => {
@@ -113,7 +113,7 @@ const Header = ({ cartCount = 0, bookingCount = 0 }) => {
 
               {/* Booking Indicator */}
               <button
-                onClick={() => navigate('/booking-scheduling')}
+                onClick={() => navigate('/my-bookings')}
                 className="relative p-2 text-text-secondary hover:text-text-primary transition-smooth"
               >
                 <Icon name="Calendar" size={20} />
@@ -152,14 +152,17 @@ const Header = ({ cartCount = 0, bookingCount = 0 }) => {
                   {currentUser ? (
                     <>
                       <button
-                        onClick={() => navigate('/worker/profile')}
+                        onClick={() => {
+                          const profilePath = userProfile?.userType === 'worker' ? '/worker/profile' : '/customer/profile';
+                          navigate(profilePath);
+                        }}
                         className="flex items-center w-full px-4 py-2 text-sm text-popover-foreground hover:bg-muted transition-smooth"
                       >
                         <Icon name="User" size={16} className="mr-3" />
                         My Profile
                       </button>
                       <button
-                        onClick={() => navigate('/booking-scheduling')}
+                        onClick={() => navigate('/my-bookings')}
                         className="flex items-center w-full px-4 py-2 text-sm text-popover-foreground hover:bg-muted transition-smooth"
                       >
                         <Icon name="Calendar" size={16} className="mr-3" />

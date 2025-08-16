@@ -8,36 +8,26 @@ const { setGlobalOptions } = require('firebase-functions/v2');
 // Set global options
 setGlobalOptions({
   maxInstances: 10,
-  region: 'asia-south1'
+  region: 'asia-south2'
 });
 
 // Initialize Firebase Admin
 admin.initializeApp();
 
 // Import all function modules
-const authFunctions = require('./auth');
-const bookingFunctions = require('./bookings');
-const paymentFunctions = require('./payments');
-const notificationFunctions = require('./notifications');
-const chatFunctions = require('./chat');
-const searchFunctions = require('./search');
-const analyticsFunctions = require('./analytics');
-const workerFunctions = require('./workers');
-const customerFunctions = require('./customers');
-const toolsFunctions = require('./tools');
-const ecommerceFunctions = require('./ecommerce');
+const auth = require('./auth');
+const bookings = require('./bookings');
+const orders = require('./orders');
+const notifications = require('./notifications');
+const payments = require('./payments');
+const search = require('./search');
 
 // Export all functions
 module.exports = {
-  ...authFunctions,
-  ...bookingFunctions,
-  ...paymentFunctions,
-  ...notificationFunctions,
-  ...chatFunctions,
-  ...searchFunctions,
-  ...analyticsFunctions,
-  ...workerFunctions,
-  ...customerFunctions,
-  ...toolsFunctions,
-  ...ecommerceFunctions
+  ...auth,
+  ...bookings,
+  ...orders,
+  ...notifications,
+  ...payments,
+  ...search
 };

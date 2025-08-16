@@ -5,6 +5,7 @@ import { getFirestore } from "firebase/firestore";
 import { getStorage } from "firebase/storage";
 import { getMessaging } from "firebase/messaging";
 import { getDatabase } from "firebase/database";
+import { getFunctions } from "firebase/functions";
 
 // Your Firebase configuration (from your console)
 const firebaseConfig = {
@@ -37,9 +38,10 @@ const db = getFirestore(app);
 const storage = getStorage(app);
 const messaging = getMessaging(app);
 const database = getDatabase(app);
+const functions = getFunctions(app, 'asia-south2');
 
 // Export for use in other files
-export { app, auth, db, storage, messaging, database };
+export { app, auth, db, storage, messaging, database, functions };
 
 // Backend URLs for your project
 export const backendUrls = {

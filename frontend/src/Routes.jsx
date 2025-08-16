@@ -12,8 +12,11 @@ import Onboarding from "./pages/Onboarding";
 
 // Customer Pages
 import CustomerDashboard from "./pages/customer/Dashboard";
+import CustomerProfile from "./pages/customer/Profile";
 import ServiceDiscoverySearch from './pages/service-discovery-search';
 import BookingScheduling from './pages/booking-scheduling';
+import MyBookings from './pages/my-bookings';
+import ProfilesPage from './pages/profiles';
 import ECommerceMarketplace from './pages/e-commerce-marketplace';
 import ToolRentalSystem from './pages/tool-rental-system';
 import CartPage from './pages/cart';
@@ -127,8 +130,24 @@ const Routes = () => {
           <Route 
             path="/bookings" 
             element={
-              <ProtectedRoute allowedRoles={['customer']}>
-                <BookingScheduling />
+              <ProtectedRoute allowedRoles={['customer', 'worker']}>
+                <MyBookings />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/my-bookings" 
+            element={
+              <ProtectedRoute allowedRoles={['customer', 'worker']}>
+                <MyBookings />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/profiles" 
+            element={
+              <ProtectedRoute allowedRoles={['customer', 'worker']}>
+                <ProfilesPage />
               </ProtectedRoute>
             } 
           />
@@ -177,6 +196,14 @@ const Routes = () => {
             element={
               <ProtectedRoute allowedRoles={['customer', 'worker']}>
                 <OrderConfirmation />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/customer/profile" 
+            element={
+              <ProtectedRoute allowedRoles={['customer']}>
+                <CustomerProfile />
               </ProtectedRoute>
             } 
           />
