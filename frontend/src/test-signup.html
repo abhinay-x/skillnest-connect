@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Signup Flow</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        button {
+            padding: 10px 20px;
+            margin: 5px;
+            cursor: pointer;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 3px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        .log {
+            background: #f4f4f4;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 3px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .success {
+            color: green;
+        }
+        .error {
+            color: red;
+        }
+    </style>
+</head>
+<body>
+    <h1>SkillNest - Test Signup & Onboarding Flow</h1>
+    
+    <div class="test-section">
+        <h2>1. Test Firebase Connection</h2>
+        <button onclick="testFirebase()">Test Firebase</button>
+        <div id="firebase-log" class="log"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>2. Create Test User</h2>
+        <input type="email" id="test-email" placeholder="test@example.com" value="test@example.com">
+        <input type="password" id="test-password" placeholder="password123" value="password123">
+        <select id="user-type">
+            <option value="customer">Customer</option>
+            <option value="worker">Worker</option>
+        </select>
+        <button onclick="createTestUser()">Create User</button>
+        <div id="signup-log" class="log"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>3. Check User Profile</h2>
+        <button onclick="checkUserProfile()">Check Profile</button>
+        <div id="profile-log" class="log"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>4. Update Profile (Simulate Onboarding)</h2>
+        <button onclick="updateTestProfile()">Update Profile</button>
+        <div id="update-log" class="log"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>5. Verify Profile Completeness</h2>
+        <button onclick="checkProfileCompleteness()">Check Completeness</button>
+        <div id="complete-log" class="log"></div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+        import { 
+            getAuth, 
+            createUserWithEmailAndPassword,
+            signInWithEmailAndPassword,
+            updateProfile
+        } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
+        import { 
+            getFirestore, 
+            doc, 
+            setDoc, 
+            getDoc, 
+            updateDoc 
+        } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+
+        // Firebase config from your .env
+        const firebaseConfig = {
+            apiKey: "AIzaSyCVpQ_RKXkEQvYD_En1LLkU-3-iz0K9qtQ",
+            authDomain: "skillnest-portal-39ed4.firebaseapp.com",
+            projectId: "skillnest-portal-39ed4",
+            storageBucket: "skillnest-portal-39ed4.firebasestorage.app",
+            messagingSenderId: "645013827643",
+            appId: "1:645013827643:web:4a4a747e7868491e322c1e"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        
+        window.auth = auth;
+        window.db = db;
+
+        function log(elementId, message, isError = false) {
+            const logDiv = document.getElementById(elementId);
+            const entry = document.createElement('div');
+            entry.className = isError ? 'error' : 'success';
+            entry.textContent = `${new Date().toLocaleTimeString()}: ${message}`;
+            logDiv.appendChild(entry);
+            logDiv.scrollTop = logDiv.scrollHeight;
+        }
+
+        window.testFirebase = function() {
+            try {
+                log('firebase-log', 'Firebase initialized successfully');
+                log('firebase-log', `Auth: ${auth ? 'Connected' : 'Not connected'}`);
+                log('firebase-log', `Firestore: ${db ? 'Connected' : 'Not connected'}`);
+            } catch (error) {
+                log('firebase-log', `Error: ${error.message}`, true);
+            }
+        };
+
+        window.createTestUser = async function() {
+            const email = document.getElementById('test-email').value;
+            const password = document.getElementById('test-password').value;
+            const userType = document.getElementById('user-type').value;
+            
+            try {
+                log('signup-log', 'Creating user...');
+                const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+                const user = userCredential.user;
+                log('signup-log', `User created: ${user.uid}`);
+                
+                // Create user profile in Firestore
+                const userRef = doc(db, 'users', user.uid);
+                await setDoc(userRef, {
+                    email: email,
+                    displayName: '',
+                    userType: userType,
+                    createdAt: new Date(),
+                    profile: {
+                        firstName: '',
+                        lastName: '',
+                        address: '',
+                        city: '',
+                        state: '',
+                        pincode: ''
+                    }
+                });
+                log('signup-log', 'User profile created in Firestore');
+            } catch (error) {
+                log('signup-log', `Error: ${error.message}`, true);
+            }
+        };
+
+        window.checkUserProfile = async function() {
+            try {
+                const user = auth.currentUser;
+                if (!user) {
+                    log('profile-log', 'No user logged in', true);
+                    return;
+                }
+                
+                const userRef = doc(db, 'users', user.uid);
+                const userSnap = await getDoc(userRef);
+                
+                if (userSnap.exists()) {
+                    const data = userSnap.data();
+                    log('profile-log', 'User profile found:');
+                    log('profile-log', JSON.stringify(data, null, 2));
+                } else {
+                    log('profile-log', 'No profile found', true);
+                }
+            } catch (error) {
+                log('profile-log', `Error: ${error.message}`, true);
+            }
+        };
+
+        window.updateTestProfile = async function() {
+            try {
+                const user = auth.currentUser;
+                if (!user) {
+                    log('update-log', 'No user logged in', true);
+                    return;
+                }
+                
+                log('update-log', 'Updating profile...');
+                
+                // Update Firebase Auth display name
+                await updateProfile(user, {
+                    displayName: 'John Doe'
+                });
+                
+                // Update Firestore profile
+                const userRef = doc(db, 'users', user.uid);
+                await updateDoc(userRef, {
+                    displayName: 'John Doe',
+                    'profile.firstName': 'John',
+                    'profile.lastName': 'Doe',
+                    'profile.address': '123 Main St',
+                    'profile.city': 'New York',
+                    'profile.state': 'NY',
+                    'profile.pincode': '10001',
+                    updatedAt: new Date()
+                });
+                
+                log('update-log', 'Profile updated successfully');
+            } catch (error) {
+                log('update-log', `Error: ${error.message}`, true);
+            }
+        };
+
+        window.checkProfileCompleteness = async function() {
+            try {
+                const user = auth.currentUser;
+                if (!user) {
+                    log('complete-log', 'No user logged in', true);
+                    return;
+                }
+                
+                const userRef = doc(db, 'users', user.uid);
+                const userSnap = await getDoc(userRef);
+                
+                if (userSnap.exists()) {
+                    const userProfile = userSnap.data();
+                    
+                    // Check required fields
+                    const requiredFields = ['displayName', 'email'];
+                    const profileFields = ['firstName', 'lastName', 'address', 'city', 'state'];
+                    
+                    const hasRequiredFields = requiredFields.every(field => userProfile[field]);
+                    const hasProfileFields = profileFields.every(field => userProfile.profile?.[field]);
+                    
+                    log('complete-log', `Required fields (${requiredFields.join(', ')}): ${hasRequiredFields ? '✓' : '✗'}`);
+                    log('complete-log', `Profile fields (${profileFields.join(', ')}): ${hasProfileFields ? '✓' : '✗'}`);
+                    log('complete-log', `Profile complete: ${hasRequiredFields && hasProfileFields ? 'YES' : 'NO'}`, !(hasRequiredFields && hasProfileFields));
+                    
+                    // Show what's missing
+                    if (!hasRequiredFields) {
+                        const missing = requiredFields.filter(field => !userProfile[field]);
+                        log('complete-log', `Missing required: ${missing.join(', ')}`, true);
+                    }
+                    if (!hasProfileFields) {
+                        const missing = profileFields.filter(field => !userProfile.profile?.[field]);
+                        log('complete-log', `Missing profile: ${missing.join(', ')}`, true);
+                    }
+                } else {
+                    log('complete-log', 'No profile found', true);
+                }
+            } catch (error) {
+                log('complete-log', `Error: ${error.message}`, true);
+            }
+        };
+    </script>
+</body>
+</html>

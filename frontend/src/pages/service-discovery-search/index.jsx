@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import Header from '../../components/ui/Header';
+import { useAuth } from '../../hooks/useAuth';
 import SearchHeader from '../../components/ui/SearchHeader';
 import Breadcrumb from '../../components/ui/Breadcrumb';
 import VoiceSearchInput from './components/VoiceSearchInput';
@@ -13,6 +13,7 @@ import Icon from '../../components/AppIcon';
 import Button from '../../components/ui/Button';
 
 const ServiceDiscoverySearch = () => {
+  const { currentUser, userProfile } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
   
@@ -37,13 +38,6 @@ const ServiceDiscoverySearch = () => {
     instantBooking: false
   });
 
-  // Mock user data
-  const mockUser = {
-    id: 1,
-    name: 'Arjun Patel',
-    email: 'arjun.patel@email.com',
-    avatar: 'https://randomuser.me/api/portraits/men/24.jpg'
-  };
 
   // Initialize from navigation state
   useEffect(() => {
@@ -102,7 +96,13 @@ const ServiceDiscoverySearch = () => {
     navigate('/booking-scheduling', { 
       state: { 
         workerId: worker?.id, 
-        worker, 
+        worker,
+        service: { 
+          id: `service-${worker?.id}`,
+          name: searchQuery || worker?.specialization,
+          category: selectedCategory,
+          baseRate: worker?.hourlyRate || 500
+        },
         bookingType: 'instant' 
       } 
     });
@@ -128,7 +128,6 @@ const ServiceDiscoverySearch = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      <Header user={mockUser} cartCount={3} bookingCount={2} />
       <SearchHeader 
         onSearch={handleSearch}
         initialQuery={searchQuery}
@@ -136,24 +135,26 @@ const ServiceDiscoverySearch = () => {
       />
       
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        <Breadcrumb />
+        <div className="w-full">
+          <Breadcrumb />
+        </div>
         
-        <div className="flex flex-col lg:flex-row lg:space-x-8">
+        <div className="flex flex-col lg:flex-row gap-6 lg:gap-8 mt-6">
           {/* Main Content */}
-          <div className="flex-1 space-y-6">
+          <div className="flex-1 min-w-0 space-y-6">
             {/* Hero Search Section */}
-            <div className="bg-gradient-to-r from-primary/10 to-accent/10 rounded-2xl p-6 lg:p-8">
+            <div className="w-full bg-gradient-to-r from-primary/10 to-accent/10 rounded-2xl p-4 sm:p-6 lg:p-8">
               <div className="text-center mb-6">
-                <h1 className="text-2xl lg:text-3xl font-bold text-text-primary mb-2">
+                <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-text-primary mb-2">
                   Find Skilled Professionals Near You
                 </h1>
-                <p className="text-text-secondary">
+                <p className="text-sm sm:text-base text-text-secondary">
                   Connect with verified experts for all your home service needs
                 </p>
               </div>
 
               {/* Voice Search Input */}
-              <div className="max-w-2xl mx-auto mb-6">
+              <div className="w-full max-w-2xl mx-auto mb-6">
                 <VoiceSearchInput
                   value={searchQuery}
                   onChange={setSearchQuery}
@@ -163,12 +164,12 @@ const ServiceDiscoverySearch = () => {
               </div>
 
               {/* Location Indicator */}
-              <div className="flex items-center justify-center space-x-2 text-sm text-text-secondary">
-                <Icon name="MapPin" size={16} />
-                <span>Searching in: {currentLocation}</span>
+              <div className="flex items-center justify-center space-x-2 text-sm text-text-secondary flex-wrap">
+                <Icon name="MapPin" size={16} className="flex-shrink-0" />
+                <span className="text-center">Searching in: {currentLocation}</span>
                 <button
                   onClick={handleLocationDetect}
-                  className="text-primary hover:text-primary/80 transition-smooth"
+                  className="text-primary hover:text-primary/80 transition-smooth flex-shrink-0"
                 >
                   <Icon name="Navigation" size={16} />
                 </button>
@@ -176,17 +177,19 @@ const ServiceDiscoverySearch = () => {
             </div>
 
             {/* Category Chips */}
-            <div className="space-y-4">
+            <div className="w-full space-y-4">
               <h2 className="text-lg font-semibold text-text-primary">Browse by Category</h2>
-              <CategoryChips
-                selectedCategory={selectedCategory}
-                onCategorySelect={handleCategorySelect}
-              />
+              <div className="w-full">
+                <CategoryChips
+                  selectedCategory={selectedCategory}
+                  onCategorySelect={handleCategorySelect}
+                />
+              </div>
             </div>
 
             {/* AI Recommendations */}
             {showRecommendations && (
-              <div className="space-y-4">
+              <div className="w-full space-y-4">
                 <AIRecommendations
                   onWorkerSelect={handleWorkerSelect}
                   userPreferences={{}}
@@ -196,14 +199,14 @@ const ServiceDiscoverySearch = () => {
 
             {/* Trending Services */}
             {showTrending && (
-              <div className="space-y-4">
+              <div className="w-full space-y-4">
                 <TrendingServices onServiceClick={handleServiceClick} />
               </div>
             )}
 
             {/* Search Results */}
             {showingResults && (
-              <div className="space-y-4">
+              <div className="w-full space-y-4">
                 <SearchResults
                   searchQuery={searchQuery}
                   selectedCategory={selectedCategory}
@@ -216,10 +219,10 @@ const ServiceDiscoverySearch = () => {
           </div>
 
           {/* Desktop Sidebar */}
-          <div className="hidden lg:block lg:w-80">
+          <div className="hidden lg:block lg:w-80 lg:flex-shrink-0">
             <div className="sticky top-4 space-y-6">
               {/* Quick Actions */}
-              <div className="bg-card border border-border rounded-xl p-4">
+              <div className="w-full bg-card border border-border rounded-xl p-4">
                 <h3 className="font-semibold text-card-foreground mb-3">Quick Actions</h3>
                 <div className="space-y-2">
                   <Button

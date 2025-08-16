@@ -232,10 +232,10 @@ After setup, you'll get these URLs:
 **Firebase Project URLs:**
 ```
 # Your project URLs will look like:
-Project ID: skillnest-12345
-Firestore URL: https://firestore.googleapis.com/v1/projects/skillnest-12345/databases/(default)/documents
-Storage URL: gs://skillnest-12345.appspot.com
-Functions URL: https://us-central1-skillnest-12345.cloudfunctions.net
+Project ID: skillnest-portal-39ed4
+Firestore URL: https://firestore.googleapis.com/v1/projects/skillnest-portal-39ed4/databases/(default)/documents
+Storage URL: gs://skillnest-portal-39ed4.appspot.com
+Functions URL: https://nam3-skillnest-portal-39ed4.cloudfunctions.net
 ```
 
 #### 4.2 Frontend Configuration
@@ -254,9 +254,9 @@ const firebaseConfig = {
 
 // Backend URLs
 const backendUrls = {
-  functions: 'https://us-central1-skillnest-12345.cloudfunctions.net',
-  firestore: 'https://firestore.googleapis.com/v1/projects/skillnest-12345/databases/(default)/documents',
-  storage: 'gs://skillnest-12345.appspot.com'
+  functions: 'https://nam3-skillnest-portal-39ed4.cloudfunctions.net',
+  firestore: 'https://firestore.googleapis.com/v1/projects/skillnest-portal-39ed4/databases/(default)/documents',
+  storage: 'gs://skillnest-portal-39ed4.appspot.com'
 };
 
 export { firebaseConfig, backendUrls };

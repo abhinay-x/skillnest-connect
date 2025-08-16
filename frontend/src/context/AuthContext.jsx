@@ -15,6 +15,9 @@ import {
   USER_TYPES
 } from '../services/firebase/auth';
 import { requestNotificationPermission } from '../services/firebase/messaging';
+import { auth, db } from '../config/firebase';
+import { onAuthStateChanged } from 'firebase/auth';
+import { doc, getDoc } from 'firebase/firestore';
 
 const AuthContext = createContext();
 
@@ -32,32 +35,78 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
+  // Improved profile fetching with error handling
+  const getUserProfile = async (user) => {
+    if (!user) return null;
+    
+    try {
+      const profileDoc = await getDoc(doc(db, 'users', user.uid));
+      return profileDoc.exists() ? { id: profileDoc.id, ...profileDoc.data() } : null;
+    } catch (error) {
+      console.error('Error getting user profile:', error);
+      return null;
+    }
+  };
+
   // Auth state listener
   useEffect(() => {
-    const unsubscribe = onAuthStateChange(async (user) => {
-      setCurrentUser(user);
+    console.log('AuthContext: Setting up auth state listener');
+    let isMounted = true; // Track if component is still mounted
+    
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      if (!isMounted) return; // Prevent state updates if component unmounted
       
       if (user) {
-        // Get user profile from Firestore
-        const { profile, error } = await getUserProfile(user.uid);
-        if (profile) {
-          setUserProfile(profile);
+        try {
+          // Wait for user to be fully authenticated
+          await user.getIdToken();
+          console.log('AuthContext: User authenticated, fetching profile for:', user.uid);
           
-          // Request notification permission for logged-in users
-          if (profile.preferences?.notifications) {
-            requestNotificationPermission();
+          // Add a small delay to ensure Firebase auth is fully ready
+          setTimeout(async () => {
+            if (!isMounted) return; // Check again after timeout
+            
+            try {
+              const profile = await getUserProfile(user);
+              if (isMounted) {
+                setCurrentUser(user);
+                setUserProfile(profile);
+                setLoading(false);
+                console.log('AuthContext: Profile loaded successfully');
+              }
+            } catch (profileError) {
+              console.error('Error loading profile after delay:', profileError);
+              if (isMounted) {
+                // Set user but no profile if profile fetch fails
+                setCurrentUser(user);
+                setUserProfile(null);
+                setLoading(false);
+              }
+            }
+          }, 100);
+          
+        } catch (error) {
+          console.error('Auth state error:', error);
+          if (isMounted) {
+            setCurrentUser(null);
+            setUserProfile(null);
+            setLoading(false);
           }
-        } else if (error) {
-          console.error('Error fetching user profile:', error);
         }
       } else {
-        setUserProfile(null);
+        if (isMounted) {
+          setCurrentUser(null);
+          setUserProfile(null);
+          setLoading(false);
+          console.log('AuthContext: No user, clearing profile');
+        }
       }
-      
-      setLoading(false);
     });
 
-    return unsubscribe;
+    return () => {
+      isMounted = false; // Mark as unmounted
+      unsubscribe();
+    };
   }, []);
 
   // Sign up with email and password
@@ -66,19 +115,26 @@ export const AuthProvider = ({ children }) => {
       setError(null);
       setLoading(true);
       
+      console.log('AuthContext: Starting signup process for:', email);
       const result = await signUpWithEmailAndPassword(email, password, additionalData);
       
       if (result.error) {
         setError(result.error);
+        console.error('AuthContext: Signup error:', result.error);
         return { success: false, error: result.error };
       }
+      
+      console.log('AuthContext: Signup successful, user created:', result.user.uid);
+      
+      // Don't manually set loading to false here - let the auth state listener handle it
+      // The auth state change will trigger and set the user and profile
       
       return { success: true, user: result.user };
     } catch (error) {
       setError(error.message);
+      console.error('AuthContext: Signup exception:', error);
+      setLoading(false); // Only set loading false on error
       return { success: false, error: error.message };
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -92,15 +148,17 @@ export const AuthProvider = ({ children }) => {
       
       if (result.error) {
         setError(result.error);
+        setLoading(false); // Only set loading false on error
         return { success: false, error: result.error };
       }
       
+      // Don't set loading to false here - let the auth state listener handle it
+      // The auth state change will trigger and manage the loading state
       return { success: true, user: result.user };
     } catch (error) {
       setError(error.message);
+      setLoading(false); // Only set loading false on error
       return { success: false, error: error.message };
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -114,15 +172,16 @@ export const AuthProvider = ({ children }) => {
       
       if (result.error) {
         setError(result.error);
+        setLoading(false); // Only set loading false on error
         return { success: false, error: result.error };
       }
       
+      // Don't set loading to false here - let the auth state listener handle it
       return { success: true, user: result.user };
     } catch (error) {
       setError(error.message);
+      setLoading(false); // Only set loading false on error
       return { success: false, error: error.message };
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -136,15 +195,16 @@ export const AuthProvider = ({ children }) => {
       
       if (result.error) {
         setError(result.error);
+        setLoading(false); // Only set loading false on error
         return { success: false, error: result.error };
       }
       
+      setLoading(false); // Set loading false for phone auth since it doesn't complete login
       return { success: true, confirmationResult: result.confirmationResult };
     } catch (error) {
       setError(error.message);
+      setLoading(false); // Only set loading false on error
       return { success: false, error: error.message };
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -158,15 +218,16 @@ export const AuthProvider = ({ children }) => {
       
       if (result.error) {
         setError(result.error);
+        setLoading(false); // Only set loading false on error
         return { success: false, error: result.error };
       }
       
+      // Don't set loading to false here - let the auth state listener handle it
       return { success: true, user: result.user };
     } catch (error) {
       setError(error.message);
+      setLoading(false); // Only set loading false on error
       return { success: false, error: error.message };
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -224,8 +285,39 @@ export const AuthProvider = ({ children }) => {
         return { success: false, error: result.error };
       }
       
-      // Update local profile state
-      setUserProfile(prev => ({ ...prev, ...profileData }));
+      // Immediately update local state with the new data
+      setUserProfile(prev => {
+        const updated = { ...prev };
+        
+        // Update displayName if provided
+        if (profileData.displayName) {
+          updated.displayName = profileData.displayName;
+        }
+        
+        // Merge profile object if provided
+        if (profileData.profile) {
+          updated.profile = { ...prev?.profile, ...profileData.profile };
+        }
+        
+        // Merge other top-level fields
+        Object.keys(profileData).forEach(key => {
+          if (key !== 'profile' && key !== 'displayName') {
+            updated[key] = profileData[key];
+          }
+        });
+        
+        console.log('Updated local userProfile:', updated);
+        return updated;
+      });
+      
+      // Wait a moment for Firestore to update, then fetch the latest profile
+      setTimeout(async () => {
+        const { profile } = await getUserProfile(currentUser.uid);
+        if (profile) {
+          console.log('Fetched updated profile from Firestore:', profile);
+          setUserProfile(profile);
+        }
+      }, 1000);
       
       return { success: true };
     } catch (error) {
@@ -262,7 +354,11 @@ export const AuthProvider = ({ children }) => {
   };
 
   // Helper functions
-  const isAuthenticated = () => !!currentUser;
+  const isAuthenticated = () => {
+    const authenticated = !!currentUser;
+    console.log('AuthContext: isAuthenticated check:', authenticated, currentUser ? currentUser.uid : 'no user');
+    return authenticated;
+  };
   
   const isCustomer = () => userProfile?.userType === USER_TYPES.CUSTOMER;
   
@@ -273,15 +369,60 @@ export const AuthProvider = ({ children }) => {
   const hasRole = (role) => userProfile?.userType === role;
 
   const isProfileComplete = () => {
-    if (!userProfile) return false;
+    if (!userProfile) {
+      console.log('Profile completeness check: No userProfile');
+      return false;
+    }
     
-    const requiredFields = ['displayName', 'email'];
-    const profileFields = ['firstName', 'lastName', 'address', 'city', 'state'];
+    // For basic profile completeness, only check essential fields
+    const essentialFields = ['email'];
+    const hasEssentialFields = essentialFields.every(field => 
+      userProfile[field] && userProfile[field].trim() !== ''
+    );
     
-    const hasRequiredFields = requiredFields.every(field => userProfile[field]);
-    const hasProfileFields = profileFields.every(field => userProfile.profile?.[field]);
+    // Check if user has at least a display name or first/last name
+    const hasName = (userProfile.displayName && userProfile.displayName.trim() !== '') ||
+                   (userProfile.profile?.firstName && userProfile.profile.firstName.trim() !== '');
     
-    return hasRequiredFields && hasProfileFields;
+    const isComplete = hasEssentialFields && hasName;
+    
+    console.log('Profile completeness check:', {
+      email: userProfile.email,
+      displayName: userProfile.displayName,
+      firstName: userProfile.profile?.firstName,
+      hasEssentialFields,
+      hasName,
+      complete: isComplete
+    });
+    
+    return isComplete;
+  };
+  
+  // Separate function for checking if full onboarding is needed
+  const needsOnboarding = () => {
+    if (!userProfile) return true;
+    
+    // More lenient onboarding check - only require essential fields
+    const essentialOnboardingFields = ['firstName'];
+    const hasEssentialOnboardingFields = essentialOnboardingFields.every(field => 
+      userProfile.profile?.[field] && userProfile.profile[field].trim() !== ''
+    );
+    
+    // Also check if user has a displayName as alternative to firstName
+    const hasDisplayName = userProfile.displayName && userProfile.displayName.trim() !== '';
+    
+    const needsOnboard = !hasEssentialOnboardingFields && !hasDisplayName;
+    
+    console.log('Onboarding check:', {
+      userProfile: userProfile,
+      firstName: userProfile.profile?.firstName,
+      displayName: userProfile.displayName,
+      hasEssentialOnboardingFields,
+      hasDisplayName,
+      needsOnboard
+    });
+    
+    return needsOnboard;
   };
 
   const value = {
@@ -310,6 +451,7 @@ export const AuthProvider = ({ children }) => {
     isAdmin,
     hasRole,
     isProfileComplete,
+    needsOnboarding,
     
     // Clear error
     clearError: () => setError(null)

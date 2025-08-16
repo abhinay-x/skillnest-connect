@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
-import Header from '../../components/ui/Header';
 import SearchHeader from '../../components/ui/SearchHeader';
 import Breadcrumb from '../../components/ui/Breadcrumb';
 import CategorySelector from './components/CategorySelector';
@@ -340,7 +339,7 @@ const ToolRentalSystem = () => {
     setSelectedTool(null);
   };
 
-  const handleToolSelect = (tool) => {
+  const handleSelectTool = (tool) => {
     setSelectedTool(tool);
   };
 
@@ -367,7 +366,6 @@ const ToolRentalSystem = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      <Header />
       <SearchHeader 
         onSearch={handleSearch}
         initialQuery={searchQuery}
@@ -381,7 +379,6 @@ const ToolRentalSystem = () => {
         <div className="mb-8">
           <div className="flex items-center justify-between mb-4">
             <div>
-              <h1 className="text-3xl font-bold text-text-primary mb-2">Tool Rental System</h1>
               <p className="text-text-secondary">
                 Rent professional tools and equipment with flexible duration options
               </p>
@@ -477,7 +474,7 @@ const ToolRentalSystem = () => {
                   <ToolCard
                     key={tool?.id}
                     tool={tool}
-                    onSelect={handleToolSelect}
+                    onSelect={handleSelectTool}
                     isSelected={selectedTool?.id === tool?.id}
                   />
                 ))}
@@ -533,7 +530,7 @@ const ToolRentalSystem = () => {
                 <ToolCard
                   key={tool?.id}
                   tool={tool}
-                  onSelect={handleToolSelect}
+                  onSelect={handleSelectTool}
                   isSelected={selectedTool?.id === tool?.id}
                 />
               ))}

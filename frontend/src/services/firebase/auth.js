@@ -11,10 +11,11 @@ import {
   signInWithPhoneNumber,
   updatePassword,
   EmailAuthProvider,
-  reauthenticateWithCredential
+  reauthenticateWithCredential,
+  onAuthStateChanged
 } from 'firebase/auth';
 import { doc, setDoc, getDoc, updateDoc } from 'firebase/firestore';
-import { auth, db } from './config';
+import { auth, db } from '../../config/firebase';
 
 // User types
 export const USER_TYPES = {
@@ -38,35 +39,20 @@ export const createUserProfile = async (user, additionalData = {}) => {
     const createdAt = new Date();
     
     try {
+      const finalDisplayName = additionalData.displayName || displayName || '';
+      
       await setDoc(userRef, {
-        displayName,
+        displayName: finalDisplayName,
         email,
-        phoneNumber,
-        photoURL,
+        phoneNumber: phoneNumber || '',
+        photoURL: photoURL || '',
+        userType: additionalData.userType || USER_TYPES.CUSTOMER, // Ensure role is always set
         createdAt,
-        userType: additionalData.userType || USER_TYPES.CUSTOMER,
-        isEmailVerified: user.emailVerified,
-        isPhoneVerified: !!phoneNumber,
-        profile: {
-          firstName: additionalData.firstName || '',
-          lastName: additionalData.lastName || '',
-          address: additionalData.address || '',
-          city: additionalData.city || '',
-          state: additionalData.state || '',
-          pincode: additionalData.pincode || '',
-          dateOfBirth: additionalData.dateOfBirth || null,
-          gender: additionalData.gender || ''
-        },
-        preferences: {
-          notifications: true,
-          emailUpdates: true,
-          smsUpdates: false,
-          theme: 'light',
-          language: 'en'
-        },
-        status: 'active',
+        updatedAt: createdAt,
         ...additionalData
       });
+      
+      console.log('User profile created with type:', additionalData.userType || USER_TYPES.CUSTOMER);
     } catch (error) {
       console.error('Error creating user profile:', error);
       throw error;
@@ -83,22 +69,67 @@ export const signUpWithEmailAndPassword = async (email, password, additionalData
   }
   
   try {
+    console.log('Starting signup for:', email);
+    console.log('Firebase Auth Config:', {
+      ...auth.app.options,
+      apiKey: '***' + (auth.app.options.apiKey ? auth.app.options.apiKey.slice(-4) : '')
+    });
     const { user } = await createUserWithEmailAndPassword(auth, email, password);
+    console.log('User created in Firebase Auth:', user.uid);
     
     // Update display name if provided
     if (additionalData.displayName) {
       await updateProfile(user, {
         displayName: additionalData.displayName
       });
+      console.log('Display name updated in Firebase Auth');
     }
     
-    // Create user profile in Firestore
-    await createUserProfile(user, additionalData);
+    // Create user profile in Firestore with email included
+    const profileData = {
+      ...additionalData,
+      email: email // Ensure email is always included
+    };
+    await createUserProfile(user, profileData);
+    console.log('User profile created in Firestore');
+    
+    // Force a refresh of the user to get the latest data
+    await user.reload();
     
     return { user, error: null };
   } catch (error) {
-    console.error('Error signing up:', error);
-    return { user: null, error: error.message };
+    console.error('Error signing up:', {
+      code: error.code,
+      message: error.message,
+      email: email,
+      timestamp: new Date().toISOString()
+    });
+    
+    let friendlyMessage = 'Failed to sign up. Please try again.';
+    
+    switch (error.code) {
+      case 'auth/invalid-api-key':
+      case 'auth/api-key-not-valid': 
+        friendlyMessage = 'Invalid Firebase configuration. Please contact support.';
+        if (typeof window.testFirebaseApiKey === 'function') {
+          console.warn('Detected invalid API key. Running test function...');
+          try {
+            await window.testFirebaseApiKey();
+          } catch (testError) {
+            console.error('API Key Test Function Error:', testError);
+          }
+        }
+        break;
+      case 'auth/user-not-found':
+      case 'auth/wrong-password':
+        friendlyMessage = 'Invalid email or password.';
+        break;
+      case 'auth/network-request-failed':
+        friendlyMessage = 'Network error. Please check your internet connection.';
+        break;
+    }
+    
+    throw new Error(friendlyMessage);
   }
 };
 
@@ -108,11 +139,45 @@ export const signInWithEmail = async (email, password) => {
   }
   
   try {
+    console.log('Firebase Auth Config:', {
+      ...auth.app.options,
+      apiKey: '***' + (auth.app.options.apiKey ? auth.app.options.apiKey.slice(-4) : '')
+    });
     const { user } = await signInWithEmailAndPassword(auth, email, password);
     return { user, error: null };
   } catch (error) {
-    console.error('Error signing in:', error);
-    return { user: null, error: error.message };
+    console.error('Error signing in:', {
+      code: error.code,
+      message: error.message,
+      email: email,
+      timestamp: new Date().toISOString()
+    });
+    
+    let friendlyMessage = 'Failed to sign in. Please try again.';
+    
+    switch (error.code) {
+      case 'auth/invalid-api-key':
+      case 'auth/api-key-not-valid': 
+        friendlyMessage = 'Invalid Firebase configuration. Please contact support.';
+        if (typeof window.testFirebaseApiKey === 'function') {
+          console.warn('Detected invalid API key. Running test function...');
+          try {
+            await window.testFirebaseApiKey();
+          } catch (testError) {
+            console.error('API Key Test Function Error:', testError);
+          }
+        }
+        break;
+      case 'auth/user-not-found':
+      case 'auth/wrong-password':
+        friendlyMessage = 'Invalid email or password.';
+        break;
+      case 'auth/network-request-failed':
+        friendlyMessage = 'Network error. Please check your internet connection.';
+        break;
+    }
+    
+    throw new Error(friendlyMessage);
   }
 };
 
@@ -123,6 +188,10 @@ export const signInWithGoogle = async (additionalData = {}) => {
   }
   
   try {
+    console.log('Firebase Auth Config:', {
+      ...auth.app.options,
+      apiKey: '***' + (auth.app.options.apiKey ? auth.app.options.apiKey.slice(-4) : '')
+    });
     const result = await signInWithPopup(auth, googleProvider);
     const user = result.user;
     
@@ -131,8 +200,37 @@ export const signInWithGoogle = async (additionalData = {}) => {
     
     return { user, error: null };
   } catch (error) {
-    console.error('Error signing in with Google:', error);
-    return { user: null, error: error.message };
+    console.error('Error signing in with Google:', {
+      code: error.code,
+      message: error.message,
+      timestamp: new Date().toISOString()
+    });
+    
+    let friendlyMessage = 'Failed to sign in with Google. Please try again.';
+    
+    switch (error.code) {
+      case 'auth/invalid-api-key':
+      case 'auth/api-key-not-valid': 
+        friendlyMessage = 'Invalid Firebase configuration. Please contact support.';
+        if (typeof window.testFirebaseApiKey === 'function') {
+          console.warn('Detected invalid API key. Running test function...');
+          try {
+            await window.testFirebaseApiKey();
+          } catch (testError) {
+            console.error('API Key Test Function Error:', testError);
+          }
+        }
+        break;
+      case 'auth/user-not-found':
+      case 'auth/wrong-password':
+        friendlyMessage = 'Invalid email or password.';
+        break;
+      case 'auth/network-request-failed':
+        friendlyMessage = 'Network error. Please check your internet connection.';
+        break;
+    }
+    
+    throw new Error(friendlyMessage);
   }
 };
 
@@ -157,16 +255,54 @@ export const signInWithPhone = async (phoneNumber, recaptchaVerifier) => {
   }
   
   try {
+    console.log('Firebase Auth Config:', {
+      ...auth.app.options,
+      apiKey: '***' + (auth.app.options.apiKey ? auth.app.options.apiKey.slice(-4) : '')
+    });
     const confirmationResult = await signInWithPhoneNumber(auth, phoneNumber, recaptchaVerifier);
     return { confirmationResult, error: null };
   } catch (error) {
-    console.error('Error sending OTP:', error);
-    return { confirmationResult: null, error: error.message };
+    console.error('Error sending OTP:', {
+      code: error.code,
+      message: error.message,
+      phoneNumber: phoneNumber,
+      timestamp: new Date().toISOString()
+    });
+    
+    let friendlyMessage = 'Failed to send OTP. Please try again.';
+    
+    switch (error.code) {
+      case 'auth/invalid-api-key':
+      case 'auth/api-key-not-valid': 
+        friendlyMessage = 'Invalid Firebase configuration. Please contact support.';
+        if (typeof window.testFirebaseApiKey === 'function') {
+          console.warn('Detected invalid API key. Running test function...');
+          try {
+            await window.testFirebaseApiKey();
+          } catch (testError) {
+            console.error('API Key Test Function Error:', testError);
+          }
+        }
+        break;
+      case 'auth/user-not-found':
+      case 'auth/wrong-password':
+        friendlyMessage = 'Invalid phone number or password.';
+        break;
+      case 'auth/network-request-failed':
+        friendlyMessage = 'Network error. Please check your internet connection.';
+        break;
+    }
+    
+    throw new Error(friendlyMessage);
   }
 };
 
 export const verifyOTP = async (confirmationResult, otp, additionalData = {}) => {
   try {
+    console.log('Firebase Auth Config:', {
+      ...auth.app.options,
+      apiKey: '***' + (auth.app.options.apiKey ? auth.app.options.apiKey.slice(-4) : '')
+    });
     const { user } = await confirmationResult.confirm(otp);
     
     // Create user profile if it doesn't exist
@@ -174,8 +310,38 @@ export const verifyOTP = async (confirmationResult, otp, additionalData = {}) =>
     
     return { user, error: null };
   } catch (error) {
-    console.error('Error verifying OTP:', error);
-    return { user: null, error: error.message };
+    console.error('Error verifying OTP:', {
+      code: error.code,
+      message: error.message,
+      otp: otp,
+      timestamp: new Date().toISOString()
+    });
+    
+    let friendlyMessage = 'Failed to verify OTP. Please try again.';
+    
+    switch (error.code) {
+      case 'auth/invalid-api-key':
+      case 'auth/api-key-not-valid': 
+        friendlyMessage = 'Invalid Firebase configuration. Please contact support.';
+        if (typeof window.testFirebaseApiKey === 'function') {
+          console.warn('Detected invalid API key. Running test function...');
+          try {
+            await window.testFirebaseApiKey();
+          } catch (testError) {
+            console.error('API Key Test Function Error:', testError);
+          }
+        }
+        break;
+      case 'auth/user-not-found':
+      case 'auth/wrong-password':
+        friendlyMessage = 'Invalid OTP.';
+        break;
+      case 'auth/network-request-failed':
+        friendlyMessage = 'Network error. Please check your internet connection.';
+        break;
+    }
+    
+    throw new Error(friendlyMessage);
   }
 };
 
@@ -186,17 +352,55 @@ export const resetPassword = async (email) => {
   }
   
   try {
+    console.log('Firebase Auth Config:', {
+      ...auth.app.options,
+      apiKey: '***' + (auth.app.options.apiKey ? auth.app.options.apiKey.slice(-4) : '')
+    });
     await sendPasswordResetEmail(auth, email);
     return { success: true, error: null };
   } catch (error) {
-    console.error('Error sending password reset email:', error);
-    return { success: false, error: error.message };
+    console.error('Error sending password reset email:', {
+      code: error.code,
+      message: error.message,
+      email: email,
+      timestamp: new Date().toISOString()
+    });
+    
+    let friendlyMessage = 'Failed to send password reset email. Please try again.';
+    
+    switch (error.code) {
+      case 'auth/invalid-api-key':
+      case 'auth/api-key-not-valid': 
+        friendlyMessage = 'Invalid Firebase configuration. Please contact support.';
+        if (typeof window.testFirebaseApiKey === 'function') {
+          console.warn('Detected invalid API key. Running test function...');
+          try {
+            await window.testFirebaseApiKey();
+          } catch (testError) {
+            console.error('API Key Test Function Error:', testError);
+          }
+        }
+        break;
+      case 'auth/user-not-found':
+      case 'auth/wrong-password':
+        friendlyMessage = 'Invalid email or password.';
+        break;
+      case 'auth/network-request-failed':
+        friendlyMessage = 'Network error. Please check your internet connection.';
+        break;
+    }
+    
+    throw new Error(friendlyMessage);
   }
 };
 
 // Update Password
 export const changePassword = async (currentPassword, newPassword) => {
   try {
+    console.log('Firebase Auth Config:', {
+      ...auth.app.options,
+      apiKey: '***' + (auth.app.options.apiKey ? auth.app.options.apiKey.slice(-4) : '')
+    });
     const user = auth.currentUser;
     if (!user) throw new Error('No user logged in');
     
@@ -209,41 +413,187 @@ export const changePassword = async (currentPassword, newPassword) => {
     
     return { success: true, error: null };
   } catch (error) {
-    console.error('Error changing password:', error);
-    return { success: false, error: error.message };
+    console.error('Error changing password:', {
+      code: error.code,
+      message: error.message,
+      currentPassword: currentPassword,
+      newPassword: newPassword,
+      timestamp: new Date().toISOString()
+    });
+    
+    let friendlyMessage = 'Failed to change password. Please try again.';
+    
+    switch (error.code) {
+      case 'auth/invalid-api-key':
+      case 'auth/api-key-not-valid': 
+        friendlyMessage = 'Invalid Firebase configuration. Please contact support.';
+        if (typeof window.testFirebaseApiKey === 'function') {
+          console.warn('Detected invalid API key. Running test function...');
+          try {
+            await window.testFirebaseApiKey();
+          } catch (testError) {
+            console.error('API Key Test Function Error:', testError);
+          }
+        }
+        break;
+      case 'auth/user-not-found':
+      case 'auth/wrong-password':
+        friendlyMessage = 'Invalid email or password.';
+        break;
+      case 'auth/network-request-failed':
+        friendlyMessage = 'Network error. Please check your internet connection.';
+        break;
+    }
+    
+    throw new Error(friendlyMessage);
   }
 };
 
 // Update Profile
 export const updateUserProfile = async (userId, profileData) => {
   try {
-    const userRef = doc(db, 'users', userId);
-    await updateDoc(userRef, {
-      ...profileData,
-      updatedAt: new Date()
+    console.log('Firebase Auth Config:', {
+      ...auth.app.options,
+      apiKey: '***' + (auth.app.options.apiKey ? auth.app.options.apiKey.slice(-4) : '')
     });
+    const userRef = doc(db, 'users', userId);
+    
+    // Prepare the update data with proper nesting
+    const updateData = {
+      updatedAt: new Date()
+    };
+    
+    // If profile object is provided, merge it with existing profile
+    if (profileData.profile) {
+      // Use dot notation to update nested fields
+      Object.keys(profileData.profile).forEach(key => {
+        updateData[`profile.${key}`] = profileData.profile[key];
+      });
+    }
+    
+    // Add any other top-level fields
+    Object.keys(profileData).forEach(key => {
+      if (key !== 'profile') {
+        updateData[key] = profileData[key];
+      }
+    });
+    
+    console.log('Updating Firestore with:', updateData);
+    await updateDoc(userRef, updateData);
     
     return { success: true, error: null };
   } catch (error) {
-    console.error('Error updating profile:', error);
-    return { success: false, error: error.message };
+    console.error('Error updating profile:', {
+      code: error.code,
+      message: error.message,
+      userId: userId,
+      profileData: profileData,
+      timestamp: new Date().toISOString()
+    });
+    
+    let friendlyMessage = 'Failed to update profile. Please try again.';
+    
+    switch (error.code) {
+      case 'auth/invalid-api-key':
+      case 'auth/api-key-not-valid': 
+        friendlyMessage = 'Invalid Firebase configuration. Please contact support.';
+        if (typeof window.testFirebaseApiKey === 'function') {
+          console.warn('Detected invalid API key. Running test function...');
+          try {
+            await window.testFirebaseApiKey();
+          } catch (testError) {
+            console.error('API Key Test Function Error:', testError);
+          }
+        }
+        break;
+      case 'auth/user-not-found':
+      case 'auth/wrong-password':
+        friendlyMessage = 'Invalid email or password.';
+        break;
+      case 'auth/network-request-failed':
+        friendlyMessage = 'Network error. Please check your internet connection.';
+        break;
+    }
+    
+    throw new Error(friendlyMessage);
   }
 };
 
 // Get User Profile
 export const getUserProfile = async (userId) => {
   try {
+    console.log('Firebase Auth Config:', {
+      ...auth.app.options,
+      apiKey: '***' + (auth.app.options.apiKey ? auth.app.options.apiKey.slice(-4) : '')
+    });
     const userRef = doc(db, 'users', userId);
     const userSnap = await getDoc(userRef);
     
     if (userSnap.exists()) {
       return { profile: userSnap.data(), error: null };
     } else {
-      return { profile: null, error: 'User profile not found' };
+      // If profile doesn't exist, create a basic one
+      const basicProfile = {
+        createdAt: new Date(),
+        userType: USER_TYPES.CUSTOMER,
+        isEmailVerified: false,
+        isPhoneVerified: false,
+        profile: {
+          firstName: '',
+          lastName: '',
+          address: '',
+          city: '',
+          state: '',
+          pincode: '',
+          dateOfBirth: null,
+          gender: ''
+        },
+        preferences: {
+          notifications: true,
+          emailUpdates: true,
+          smsUpdates: false,
+          theme: 'light',
+          language: 'en'
+        },
+        status: 'active'
+      };
+      
+      await setDoc(userRef, basicProfile);
+      return { profile: basicProfile, error: null };
     }
   } catch (error) {
-    console.error('Error getting user profile:', error);
-    return { profile: null, error: error.message };
+    console.error('Error getting user profile:', {
+      code: error.code,
+      message: error.message,
+      userId: userId,
+      timestamp: new Date().toISOString()
+    });
+    
+    let friendlyMessage = 'Failed to get user profile. Please try again.';
+    
+    switch (error.code) {
+      case 'auth/invalid-api-key':
+      case 'auth/api-key-not-valid': 
+        friendlyMessage = 'Invalid Firebase configuration. Please contact support.';
+        if (typeof window.testFirebaseApiKey === 'function') {
+          console.warn('Detected invalid API key. Running test function...');
+          try {
+            await window.testFirebaseApiKey();
+          } catch (testError) {
+            console.error('API Key Test Function Error:', testError);
+          }
+        }
+        break;
+      case 'auth/user-not-found':
+      case 'auth/wrong-password':
+        friendlyMessage = 'Invalid email or password.';
+        break;
+      case 'auth/network-request-failed':
+        friendlyMessage = 'Network error. Please check your internet connection.';
+        break;
+    }
+    
+    throw new Error(friendlyMessage);
   }
 };
 
@@ -254,11 +604,44 @@ export const signOutUser = async () => {
   }
   
   try {
+    console.log('Firebase Auth Config:', {
+      ...auth.app.options,
+      apiKey: '***' + (auth.app.options.apiKey ? auth.app.options.apiKey.slice(-4) : '')
+    });
     await signOut(auth);
     return { success: true, error: null };
   } catch (error) {
-    console.error('Error signing out:', error);
-    return { success: false, error: error.message };
+    console.error('Error signing out:', {
+      code: error.code,
+      message: error.message,
+      timestamp: new Date().toISOString()
+    });
+    
+    let friendlyMessage = 'Failed to sign out. Please try again.';
+    
+    switch (error.code) {
+      case 'auth/invalid-api-key':
+      case 'auth/api-key-not-valid': 
+        friendlyMessage = 'Invalid Firebase configuration. Please contact support.';
+        if (typeof window.testFirebaseApiKey === 'function') {
+          console.warn('Detected invalid API key. Running test function...');
+          try {
+            await window.testFirebaseApiKey();
+          } catch (testError) {
+            console.error('API Key Test Function Error:', testError);
+          }
+        }
+        break;
+      case 'auth/user-not-found':
+      case 'auth/wrong-password':
+        friendlyMessage = 'Invalid email or password.';
+        break;
+      case 'auth/network-request-failed':
+        friendlyMessage = 'Network error. Please check your internet connection.';
+        break;
+    }
+    
+    throw new Error(friendlyMessage);
   }
 };
 
@@ -271,5 +654,44 @@ export const onAuthStateChange = (callback) => {
     // Return a dummy unsubscribe function
     return () => {};
   }
-  return auth.onAuthStateChanged(callback);
+  
+  console.log('Setting up auth state listener');
+  return auth.onAuthStateChanged((user) => {
+    console.log('Auth state changed:', user ? `${user.email} (${user.uid})` : 'null');
+    callback(user);
+  });
+};
+
+onAuthStateChanged(auth, (user) => {
+  console.log('Current user:', user ? user.uid : 'No user signed in');
+});
+
+// Debug function
+export const testAuthConnection = async () => {
+  try {
+    const auth = getAuth();
+    console.log('Auth instance created', auth);
+    
+    // Test API connectivity
+    const response = await fetch(
+      `https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=${import.meta.env.VITE_FIREBASE_API_KEY}`,
+      {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+          email: 'test@test.com',
+          password: 'wrongpassword',
+          returnSecureToken: true
+        })
+      }
+    );
+    
+    const data = await response.json();
+    console.log('Auth API response:', data);
+    
+    return data;
+  } catch (error) {
+    console.error('Auth test failed:', error);
+    throw error;
+  }
 };

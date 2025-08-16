@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import Icon from '../../../components/AppIcon';
 import Button from '../../../components/ui/Button';
 import Select from '../../../components/ui/Select';
 
 const RentalCalculator = ({ selectedTool, onRentalUpdate }) => {
+  const navigate = useNavigate();
   const [duration, setDuration] = useState(1);
   const [durationType, setDurationType] = useState('daily');
   const [includeOperator, setIncludeOperator] = useState(false);
@@ -192,7 +194,38 @@ const RentalCalculator = ({ selectedTool, onRentalUpdate }) => {
           <span>₹{pricing?.securityDeposit?.toLocaleString('en-IN')}</span>
         </div>
       </div>
-      <Button variant="default" fullWidth className="mt-6">
+      <Button 
+        variant="default" 
+        fullWidth 
+        className="mt-6"
+        onClick={() => {
+          // Navigate to rental checkout with rental details
+          const rentalItems = [{
+            id: selectedTool.id,
+            name: selectedTool.name,
+            image: selectedTool.image,
+            pricePerDay: selectedTool.pricing?.daily || selectedTool.pricing?.hourly * 8,
+            price: selectedTool.pricing?.daily || selectedTool.pricing?.hourly * 8,
+            quantity: 1,
+            securityDeposit: selectedTool.securityDeposit
+          }];
+          
+          navigate('/rental-checkout', {
+            state: {
+              rentalItems: rentalItems,
+              rentalOptions: {
+                duration: duration,
+                durationType: durationType,
+                includeOperator: includeOperator,
+                includeTraining: includeTraining,
+                includeDelivery: includeDelivery
+              },
+              pricing: pricing,
+              fromRental: true
+            }
+          });
+        }}
+      >
         <Icon name="Calendar" size={16} className="mr-2" />
         Book Now
       </Button>

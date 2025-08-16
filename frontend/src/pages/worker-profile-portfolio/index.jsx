@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import Header from '../../components/ui/Header';
+import { useAuth } from '../../hooks/useAuth';
 import Breadcrumb from '../../components/ui/Breadcrumb';
 import Icon from '../../components/AppIcon';
 import Button from '../../components/ui/Button';
@@ -17,6 +17,7 @@ import PricingTab from './components/PricingTab';
 import AvailabilityCalendar from './components/AvailabilityCalendar';
 
 const WorkerProfilePortfolio = () => {
+  const { currentUser, userProfile } = useAuth();
   const [activeTab, setActiveTab] = useState('overview');
   const [showShareModal, setShowShareModal] = useState(false);
   const [isBookmarked, setIsBookmarked] = useState(false);
@@ -483,7 +484,6 @@ I take pride in my work and ensure every project meets the highest standards. My
 
   return (
     <div className="min-h-screen bg-background">
-      <Header />
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         <div className="flex items-center justify-between mb-6">
           <Breadcrumb />

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import Header from '../../components/ui/Header';
+import { useAuth } from '../../hooks/useAuth';
 import SearchHeader from '../../components/ui/SearchHeader';
 import Breadcrumb from '../../components/ui/Breadcrumb';
 import CategoryBanner from './components/CategoryBanner';
@@ -13,6 +13,7 @@ import Icon from '../../components/AppIcon';
 import Button from '../../components/ui/Button';
 
 const ECommerceMarketplace = () => {
+  const { currentUser, userProfile } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   
@@ -347,9 +348,17 @@ const ECommerceMarketplace = () => {
   };
 
   const handleCheckout = async () => {
-    // Mock checkout process
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    navigate('/booking-scheduling', { state: { fromCheckout: true } });
+    // Navigate to marketplace checkout with cart items
+    navigate('/marketplace-checkout', {
+      state: {
+        cartItems: cartItems,
+        totalAmount: cartItems.reduce((sum, item) => {
+          const subtotal = sum + (item.price * item.quantity);
+          return subtotal + (subtotal * 0.18); // Include GST
+        }, 0),
+        fromMarketplace: true
+      }
+    });
   };
 
   const activeFiltersCount = () => {
@@ -364,10 +373,6 @@ const ECommerceMarketplace = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      <Header 
-        cartCount={cartItems?.reduce((sum, item) => sum + item?.quantity, 0)}
-        bookingCount={0}
-      />
       <SearchHeader onSearch={handleSearch} />
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         <Breadcrumb />

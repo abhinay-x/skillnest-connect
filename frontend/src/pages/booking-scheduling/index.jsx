@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import Header from '../../components/ui/Header';
+import { useAuth } from '../../hooks/useAuth';
 import Breadcrumb from '../../components/ui/Breadcrumb';
 import BookingProgressIndicator from './components/BookingProgressIndicator';
 import ServiceConfirmationCard from './components/ServiceConfirmationCard';
@@ -15,6 +15,7 @@ import Button from '../../components/ui/Button';
 import Icon from '../../components/AppIcon';
 
 const BookingScheduling = () => {
+  const { currentUser, userProfile } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
   const [currentStep, setCurrentStep] = useState(1);
@@ -23,7 +24,7 @@ const BookingScheduling = () => {
 
   // Booking state
   const [bookingData, setBookingData] = useState({
-    service: null,
+    service: location?.state?.service || null,
     worker: null,
     selectedDate: null,
     selectedTime: null,
@@ -82,7 +83,6 @@ const BookingScheduling = () => {
     const stateData = location?.state;
     setBookingData(prev => ({
       ...prev,
-      service: stateData?.service || mockService,
       worker: stateData?.worker || mockWorker
     }));
   }, [location?.state]);
@@ -198,7 +198,6 @@ const BookingScheduling = () => {
   if (location?.state?.bookingConfirmed) {
     return (
       <div className="min-h-screen bg-background">
-        <Header />
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="text-center">
             <div className="w-20 h-20 bg-success rounded-full flex items-center justify-center mx-auto mb-6">
@@ -255,7 +254,6 @@ const BookingScheduling = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      <Header />
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <Breadcrumb />
         

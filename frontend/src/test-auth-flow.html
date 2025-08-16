@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Auth Flow</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+        }
+        .section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        button {
+            padding: 10px 20px;
+            margin: 5px;
+            cursor: pointer;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 3px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        input, select {
+            padding: 8px;
+            margin: 5px;
+            border: 1px solid #ddd;
+            border-radius: 3px;
+        }
+        .log {
+            background: #f4f4f4;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 3px;
+            max-height: 300px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 12px;
+        }
+        .success { color: green; }
+        .error { color: red; }
+        .info { color: blue; }
+        .warning { color: orange; }
+    </style>
+</head>
+<body>
+    <h1>SkillNest - Test Authentication Flow</h1>
+    
+    <div class="section">
+        <h2>Quick Test</h2>
+        <button onclick="quickTest()">Run Complete Test Flow</button>
+        <div id="quick-log" class="log"></div>
+    </div>
+
+    <div class="section">
+        <h2>Manual Test</h2>
+        <div>
+            <input type="email" id="email" placeholder="Email" value="test@example.com">
+            <input type="password" id="password" placeholder="Password" value="Test123!">
+            <select id="userType">
+                <option value="customer">Customer</option>
+                <option value="worker">Worker</option>
+            </select>
+        </div>
+        <div>
+            <button onclick="testSignup()">1. Sign Up</button>
+            <button onclick="testLogin()">2. Login</button>
+            <button onclick="checkAuth()">3. Check Auth</button>
+            <button onclick="checkProfile()">4. Check Profile</button>
+            <button onclick="completeProfile()">5. Complete Profile</button>
+            <button onclick="testLogout()">6. Logout</button>
+        </div>
+        <div id="manual-log" class="log"></div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+        import { 
+            getAuth, 
+            createUserWithEmailAndPassword,
+            signInWithEmailAndPassword,
+            updateProfile,
+            signOut,
+            onAuthStateChanged
+        } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
+        import { 
+            getFirestore, 
+            doc, 
+            setDoc, 
+            getDoc, 
+            updateDoc 
+        } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+
+        // Firebase config
+        const firebaseConfig = {
+            apiKey: "AIzaSyCVpQ_RKXkEQvYD_En1LLkU-3-iz0K9qtQ",
+            authDomain: "skillnest-portal-39ed4.firebaseapp.com",
+            projectId: "skillnest-portal-39ed4",
+            storageBucket: "skillnest-portal-39ed4.firebasestorage.app",
+            messagingSenderId: "645013827643",
+            appId: "1:645013827643:web:4a4a747e7868491e322c1e"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        
+        window.auth = auth;
+        window.db = db;
+
+        // Logging utility
+        function log(elementId, message, type = 'info') {
+            const logDiv = document.getElementById(elementId);
+            const entry = document.createElement('div');
+            entry.className = type;
+            entry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            logDiv.appendChild(entry);
+            logDiv.scrollTop = logDiv.scrollHeight;
+        }
+
+        // Auth state listener
+        onAuthStateChanged(auth, (user) => {
+            if (user) {
+                log('manual-log', `Auth state: User logged in (${user.email})`, 'info');
+            } else {
+                log('manual-log', 'Auth state: No user logged in', 'warning');
+            }
+        });
+
+        // Test functions
+        window.testSignup = async function() {
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            const userType = document.getElementById('userType').value;
+            
+            try {
+                log('manual-log', `Creating user: ${email}`, 'info');
+                
+                // Create user
+                const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+                const user = userCredential.user;
+                log('manual-log', `✓ User created: ${user.uid}`, 'success');
+                
+                // Create Firestore profile
+                const userRef = doc(db, 'users', user.uid);
+                const profileData = {
+                    email: email,
+                    displayName: '',
+                    userType: userType,
+                    createdAt: new Date(),
+                    isEmailVerified: false,
+                    isPhoneVerified: false,
+                    profile: {
+                        firstName: '',
+                        lastName: '',
+                        address: '',
+                        city: '',
+                        state: '',
+                        pincode: ''
+                    },
+                    preferences: {
+                        notifications: true,
+                        emailUpdates: true,
+                        smsUpdates: false,
+                        theme: 'light',
+                        language: 'en'
+                    },
+                    status: 'active'
+                };
+                
+                await setDoc(userRef, profileData);
+                log('manual-log', '✓ Profile created in Firestore', 'success');
+                log('manual-log', 'Profile data: ' + JSON.stringify(profileData, null, 2), 'info');
+                
+            } catch (error) {
+                log('manual-log', `✗ Error: ${error.message}`, 'error');
+            }
+        };
+
+        window.testLogin = async function() {
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            
+            try {
+                log('manual-log', `Logging in: ${email}`, 'info');
+                const userCredential = await signInWithEmailAndPassword(auth, email, password);
+                log('manual-log', `✓ Logged in: ${userCredential.user.uid}`, 'success');
+            } catch (error) {
+                log('manual-log', `✗ Error: ${error.message}`, 'error');
+            }
+        };
+
+        window.checkAuth = function() {
+            const user = auth.currentUser;
+            if (user) {
+                log('manual-log', `✓ Authenticated: ${user.email} (${user.uid})`, 'success');
+                log('manual-log', `Display Name: ${user.displayName || 'Not set'}`, 'info');
+                log('manual-log', `Email Verified: ${user.emailVerified}`, 'info');
+            } else {
+                log('manual-log', '✗ Not authenticated', 'error');
+            }
+        };
+
+        window.checkProfile = async function() {
+            const user = auth.currentUser;
+            if (!user) {
+                log('manual-log', '✗ No user logged in', 'error');
+                return;
+            }
+            
+            try {
+                const userRef = doc(db, 'users', user.uid);
+                const userSnap = await getDoc(userRef);
+                
+                if (userSnap.exists()) {
+                    const data = userSnap.data();
+                    log('manual-log', '✓ Profile found', 'success');
+                    
+                    // Check completeness
+                    const requiredFields = ['displayName', 'email'];
+                    const profileFields = ['firstName', 'lastName', 'address', 'city', 'state'];
+                    
+                    const hasRequired = requiredFields.every(f => data[f] && data[f].trim() !== '');
+                    const hasProfile = profileFields.every(f => data.profile?.[f] && data.profile[f].trim() !== '');
+                    
+                    log('manual-log', `Required fields complete: ${hasRequired ? '✓' : '✗'}`, hasRequired ? 'success' : 'warning');
+                    log('manual-log', `Profile fields complete: ${hasProfile ? '✓' : '✗'}`, hasProfile ? 'success' : 'warning');
+                    log('manual-log', `Overall complete: ${hasRequired && hasProfile ? '✓' : '✗'}`, hasRequired && hasProfile ? 'success' : 'warning');
+                    
+                    log('manual-log', 'Profile: ' + JSON.stringify(data, null, 2), 'info');
+                } else {
+                    log('manual-log', '✗ No profile found', 'error');
+                }
+            } catch (error) {
+                log('manual-log', `✗ Error: ${error.message}`, 'error');
+            }
+        };
+
+        window.completeProfile = async function() {
+            const user = auth.currentUser;
+            if (!user) {
+                log('manual-log', '✗ No user logged in', 'error');
+                return;
+            }
+            
+            try {
+                log('manual-log', 'Completing profile...', 'info');
+                
+                // Update Auth display name
+                await updateProfile(user, {
+                    displayName: 'Test User'
+                });
+                log('manual-log', '✓ Updated Auth display name', 'success');
+                
+                // Update Firestore profile
+                const userRef = doc(db, 'users', user.uid);
+                await updateDoc(userRef, {
+                    displayName: 'Test User',
+                    'profile.firstName': 'Test',
+                    'profile.lastName': 'User',
+                    'profile.address': '123 Test Street',
+                    'profile.city': 'Test City',
+                    'profile.state': 'TS',
+                    'profile.pincode': '12345',
+                    updatedAt: new Date()
+                });
+                log('manual-log', '✓ Updated Firestore profile', 'success');
+                
+                // Verify
+                await checkProfile();
+                
+            } catch (error) {
+                log('manual-log', `✗ Error: ${error.message}`, 'error');
+            }
+        };
+
+        window.testLogout = async function() {
+            try {
+                await signOut(auth);
+                log('manual-log', '✓ Logged out', 'success');
+            } catch (error) {
+                log('manual-log', `✗ Error: ${error.message}`, 'error');
+            }
+        };
+
+        window.quickTest = async function() {
+            const testEmail = `test${Date.now()}@example.com`;
+            const testPassword = 'Test123!';
+            
+            log('quick-log', '=== Starting Quick Test ===', 'info');
+            log('quick-log', `Test email: ${testEmail}`, 'info');
+            
+            try {
+                // 1. Signup
+                log('quick-log', '1. Creating user...', 'info');
+                const userCredential = await createUserWithEmailAndPassword(auth, testEmail, testPassword);
+                const user = userCredential.user;
+                log('quick-log', `✓ User created: ${user.uid}`, 'success');
+                
+                // 2. Create profile
+                log('quick-log', '2. Creating profile...', 'info');
+                const userRef = doc(db, 'users', user.uid);
+                await setDoc(userRef, {
+                    email: testEmail,
+                    displayName: '',
+                    userType: 'customer',
+                    createdAt: new Date(),
+                    profile: {
+                        firstName: '',
+                        lastName: '',
+                        address: '',
+                        city: '',
+                        state: '',
+                        pincode: ''
+                    },
+                    status: 'active'
+                });
+                log('quick-log', '✓ Profile created', 'success');
+                
+                // 3. Check incomplete profile
+                log('quick-log', '3. Checking incomplete profile...', 'info');
+                const snap1 = await getDoc(userRef);
+                const data1 = snap1.data();
+                const incomplete = !data1.displayName || data1.displayName === '';
+                log('quick-log', `Profile incomplete: ${incomplete ? '✓' : '✗'}`, incomplete ? 'success' : 'error');
+                
+                // 4. Complete profile
+                log('quick-log', '4. Completing profile...', 'info');
+                await updateProfile(user, { displayName: 'Quick Test User' });
+                await updateDoc(userRef, {
+                    displayName: 'Quick Test User',
+                    'profile.firstName': 'Quick',
+                    'profile.lastName': 'Test',
+                    'profile.address': '456 Quick St',
+                    'profile.city': 'Testville',
+                    'profile.state': 'QT',
+                    updatedAt: new Date()
+                });
+                log('quick-log', '✓ Profile completed', 'success');
+                
+                // 5. Verify complete profile
+                log('quick-log', '5. Verifying complete profile...', 'info');
+                const snap2 = await getDoc(userRef);
+                const data2 = snap2.data();
+                const complete = data2.displayName && data2.displayName !== '' &&
+                                data2.profile?.firstName && data2.profile?.lastName &&
+                                data2.profile?.address && data2.profile?.city && data2.profile?.state;
+                log('quick-log', `Profile complete: ${complete ? '✓' : '✗'}`, complete ? 'success' : 'error');
+                
+                // 6. Cleanup
+                log('quick-log', '6. Cleaning up...', 'info');
+                await signOut(auth);
+                log('quick-log', '✓ Logged out', 'success');
+                
+                log('quick-log', '=== Test Complete ===', 'success');
+                log('quick-log', complete ? '✓ All tests passed!' : '✗ Some tests failed', complete ? 'success' : 'error');
+                
+            } catch (error) {
+                log('quick-log', `✗ Test failed: ${error.message}`, 'error');
+            }
+        };
+    </script>
+</body>
+</html>

@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
+import { useAuth } from '../../hooks/useAuth';
 import Icon from '../AppIcon';
 import Button from './Button';
 
-const Header = ({ user = null, cartCount = 0, bookingCount = 0 }) => {
+const Header = ({ cartCount = 0, bookingCount = 0 }) => {
+  const { currentUser, userProfile, logout } = useAuth();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const location = useLocation();
@@ -31,13 +33,14 @@ const Header = ({ user = null, cartCount = 0, bookingCount = 0 }) => {
   };
 
   const handleLogin = () => {
-    navigate('/user-registration-login');
+    navigate('/login');
     setIsUserMenuOpen(false);
   };
 
-  const handleLogout = () => {
-    // Logout logic would go here
+  const handleLogout = async () => {
+    await logout();
     setIsUserMenuOpen(false);
+    navigate('/');
   };
 
   // Close mobile menu on route change
@@ -97,7 +100,7 @@ const Header = ({ user = null, cartCount = 0, bookingCount = 0 }) => {
             <div className="hidden sm:flex items-center space-x-2">
               {/* Cart Indicator */}
               <button
-                onClick={() => navigate('/marketplace')}
+                onClick={() => navigate('/cart')}
                 className="relative p-2 text-text-secondary hover:text-text-primary transition-smooth"
               >
                 <Icon name="ShoppingCart" size={20} />
@@ -110,7 +113,7 @@ const Header = ({ user = null, cartCount = 0, bookingCount = 0 }) => {
 
               {/* Booking Indicator */}
               <button
-                onClick={() => navigate('/booking')}
+                onClick={() => navigate('/booking-scheduling')}
                 className="relative p-2 text-text-secondary hover:text-text-primary transition-smooth"
               >
                 <Icon name="Calendar" size={20} />
@@ -124,7 +127,7 @@ const Header = ({ user = null, cartCount = 0, bookingCount = 0 }) => {
 
             {/* User Menu */}
             <div className="relative user-menu-container">
-              {user ? (
+              {currentUser ? (
                 <button
                   onClick={handleUserMenuToggle}
                   className="flex items-center space-x-2 p-2 rounded-md hover:bg-muted transition-smooth"
@@ -133,7 +136,7 @@ const Header = ({ user = null, cartCount = 0, bookingCount = 0 }) => {
                     <Icon name="User" size={16} color="white" />
                   </div>
                   <span className="hidden sm:block text-sm font-medium text-text-primary">
-                    {user?.name}
+                    {userProfile?.displayName || userProfile?.profile?.firstName || 'User'}
                   </span>
                   <Icon name="ChevronDown" size={16} className="text-text-secondary" />
                 </button>
@@ -146,10 +149,10 @@ const Header = ({ user = null, cartCount = 0, bookingCount = 0 }) => {
               {/* User Dropdown Menu */}
               {isUserMenuOpen && (
                 <div className="absolute right-0 mt-2 w-48 bg-popover border border-border rounded-md shadow-elevation-2 py-1 animate-fade-in">
-                  {user ? (
+                  {currentUser ? (
                     <>
                       <button
-                        onClick={() => navigate('/worker-profile-portfolio')}
+                        onClick={() => navigate('/worker/profile')}
                         className="flex items-center w-full px-4 py-2 text-sm text-popover-foreground hover:bg-muted transition-smooth"
                       >
                         <Icon name="User" size={16} className="mr-3" />
@@ -181,7 +184,7 @@ const Header = ({ user = null, cartCount = 0, bookingCount = 0 }) => {
                         Sign In
                       </button>
                       <button
-                        onClick={() => navigate('/user-registration-login')}
+                        onClick={() => navigate('/signup')}
                         className="flex items-center w-full px-4 py-2 text-sm text-popover-foreground hover:bg-muted transition-smooth"
                       >
                         <Icon name="UserPlus" size={16} className="mr-3" />
@@ -224,7 +227,7 @@ const Header = ({ user = null, cartCount = 0, bookingCount = 0 }) => {
               {/* Mobile Cart/Booking Links */}
               <div className="border-t border-border pt-2 mt-2">
                 <button
-                  onClick={() => handleNavigation('/e-commerce-marketplace')}
+                  onClick={() => handleNavigation('/cart')}
                   className="flex items-center justify-between w-full px-3 py-2 text-base font-medium text-text-secondary hover:text-text-primary hover:bg-muted transition-smooth"
                 >
                   <div className="flex items-center space-x-3">

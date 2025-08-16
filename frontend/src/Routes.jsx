@@ -8,6 +8,7 @@ import Footer from "./components/ui/Footer";
 
 // Auth Pages
 import AuthPage from "./pages/auth/AuthPage";
+import Onboarding from "./pages/Onboarding";
 
 // Customer Pages
 import CustomerDashboard from "./pages/customer/Dashboard";
@@ -15,6 +16,9 @@ import ServiceDiscoverySearch from './pages/service-discovery-search';
 import BookingScheduling from './pages/booking-scheduling';
 import ECommerceMarketplace from './pages/e-commerce-marketplace';
 import ToolRentalSystem from './pages/tool-rental-system';
+import CartPage from './pages/cart';
+import MarketplaceCheckout from './pages/marketplace-checkout';
+import RentalCheckout from './pages/rental-checkout';
 
 // Worker Pages
 import WorkerDashboard from "./pages/worker/Dashboard";
@@ -23,6 +27,7 @@ import WorkerProfilePortfolio from './pages/worker-profile-portfolio';
 // Common Pages
 import Home from "./pages/Home";
 import NotFound from "pages/NotFound";
+import OrderConfirmation from './pages/order-confirmation';
 
 // Unauthorized Page Component
 const UnauthorizedPage = () => {
@@ -53,6 +58,12 @@ const Routes = () => {
         <RouterRoutes>
           {/* Public Routes */}
           <Route path="/" element={<Home />} />
+          
+          {/* Onboarding Route */}
+          <Route 
+            path="/onboarding" 
+            element={<Onboarding />}
+          />
           
           {/* Auth Routes (only accessible when not logged in) */}
           <Route 
@@ -92,7 +103,7 @@ const Routes = () => {
           <Route 
             path="/services" 
             element={
-              <ProtectedRoute>
+              <ProtectedRoute allowedRoles={['customer', 'worker']}>
                 <ServiceDiscoverySearch />
               </ProtectedRoute>
             } 
@@ -100,7 +111,7 @@ const Routes = () => {
           <Route 
             path="/services/:category" 
             element={
-              <ProtectedRoute>
+              <ProtectedRoute allowedRoles={['customer', 'worker']}>
                 <ServiceDiscoverySearch />
               </ProtectedRoute>
             } 
@@ -124,16 +135,48 @@ const Routes = () => {
           <Route 
             path="/marketplace" 
             element={
-              <ProtectedRoute>
+              <ProtectedRoute allowedRoles={['customer', 'worker']}>
                 <ECommerceMarketplace />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/cart" 
+            element={
+              <ProtectedRoute allowedRoles={['customer', 'worker']}>
+                <CartPage />
               </ProtectedRoute>
             } 
           />
           <Route 
             path="/tool-rental" 
             element={
-              <ProtectedRoute>
+              <ProtectedRoute allowedRoles={['customer', 'worker']}>
                 <ToolRentalSystem />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/marketplace-checkout" 
+            element={
+              <ProtectedRoute allowedRoles={['customer', 'worker']}>
+                <MarketplaceCheckout />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/rental-checkout" 
+            element={
+              <ProtectedRoute allowedRoles={['customer', 'worker']}>
+                <RentalCheckout />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/order-confirmation" 
+            element={
+              <ProtectedRoute allowedRoles={['customer', 'worker']}>
+                <OrderConfirmation />
               </ProtectedRoute>
             } 
           />
@@ -151,6 +194,14 @@ const Routes = () => {
             path="/worker/profile" 
             element={
               <ProtectedRoute allowedRoles={['worker']}>
+                <WorkerProfilePortfolio />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/profiles" 
+            element={
+              <ProtectedRoute allowedRoles={['customer', 'worker']}>
                 <WorkerProfilePortfolio />
               </ProtectedRoute>
             } 

@@ -4,7 +4,16 @@ import App from "./App";
 import "./styles/tailwind.css";
 import "./styles/index.css";
 
+// Conditionally run Firebase test in development
+if (import.meta.env.DEV) {
+  import('./firebase-test');
+}
+
 const container = document.getElementById("root");
 const root = createRoot(container);
 
-root.render(<App />);
+root.render(
+  <React.StrictMode>
+    <App />
+  </React.StrictMode>
+);

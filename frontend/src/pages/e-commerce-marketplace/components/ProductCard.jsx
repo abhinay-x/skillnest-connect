@@ -168,7 +168,7 @@ const ProductCard = ({ product, onAddToCart, onToggleWishlist, onProductClick, i
           loading={isLoading}
           iconName="ShoppingCart"
           iconPosition="left"
-          onClick={handleAddToCart}
+          onClick={() => onAddToCart(product)}
         >
           {product?.inStock ? "Add to Cart" : "Notify When Available"}
         </Button>

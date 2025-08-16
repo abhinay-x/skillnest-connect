@@ -3,7 +3,7 @@ import Icon from '../../../components/AppIcon';
 import Button from '../../../components/ui/Button';
 import Image from '../../../components/AppImage';
 
-const ShoppingCart = ({ isOpen, onClose, cartItems, onUpdateQuantity, onRemoveItem, onCheckout }) => {
+const ShoppingCart = ({ isOpen, onClose, cartItems, onUpdateQuantity, onRemoveItem, onCheckout, navigate }) => {
   const [isCheckingOut, setIsCheckingOut] = useState(false);
 
   const formatPrice = (price) => {
@@ -171,11 +171,8 @@ const ShoppingCart = ({ isOpen, onClose, cartItems, onUpdateQuantity, onRemoveIt
               {/* Checkout Button */}
               <Button
                 variant="default"
-                fullWidth
                 onClick={handleCheckout}
-                loading={isCheckingOut}
-                iconName="CreditCard"
-                iconPosition="left"
+                className="w-full mt-4"
               >
                 Proceed to Checkout
               </Button>
