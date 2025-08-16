@@ -21,7 +21,13 @@ const firebaseConfig = {
 
 // Validate configuration
 if (!firebaseConfig.apiKey) {
-  throw new Error('Missing Firebase API Key. Please check your .env file');
+  console.error('Firebase Config:', firebaseConfig);
+  console.error('Environment Variables:', {
+    apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+    authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+    projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID
+  });
+  throw new Error('Missing Firebase API Key. Please check your environment variables in Vercel dashboard');
 }
 
 // Initialize Firebase app only if it doesn't exist
